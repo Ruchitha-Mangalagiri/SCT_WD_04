@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Advanced To-Do Web App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      padding: 20px;
+      background: url('task4.jpg') no-repeat center center fixed;
+      background-size: cover;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.light {
+      background: #f0f0f0;
+      color: #333;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 100px auto;
+      background-color: saddlebrown;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    body.light .container {
+      background-color: #fff;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 32px;
+    }
+
+    .toggle-mode {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .toggle-mode button {
+      background: #8e44ad;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .task-form,
+    .task-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .task-form input,
+    .task-form button,
+    .task-form select,
+    .task-controls input,
+    .task-controls select {
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    .task-form button {
+      background: #27ae60;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+
+    .task {
+      background: #ffc0cb;
+      color: black;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .task.completed .task-title {
+      text-decoration: line-through;
+      color: #555;
+    }
+
+    .task-title {
+      font-weight: bold;
+    }
+
+    .task-time {
+      font-size: 14px;
+      color: #333;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .actions button {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    .complete { background: #2ecc71; }
+    .edit { background: #f39c12; }
+    .delete { background: #e74c3c; }
+
+    .progress-container {
+      margin-top: 20px;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #2ecc71;
+      width: 0;
+      transition: width 0.3s ease;
+    }
+
+    .collapse-btn {
+      background: #34495e;
+      color: #fff;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      margin: 15px auto;
+      display: block;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📝 Advanced To-Do List</h1>
+
+    <div class="toggle-mode">
+      <button onclick="toggleMode()">🌙 Toggle Dark/Light</button>
+    </div>
+
+    <div class="task-form">
+      <input type="text" id="taskInput" placeholder="Enter your task" />
+      <input type="datetime-local" id="taskDateTime" />
+      <select id="prioritySelect">
+        <option value="normal">🟢 Normal</option>
+        <option value="high">🔥 High</option>
+      </select>
+      <button onclick="addTask()">Add Task</button>
+    </div>
+
+    <div class="task-controls">
+      <input type="text" id="searchInput" placeholder="🔍 Search tasks..." oninput="filterTasks()" />
+      <select id="sortTasks" onchange="sortTasks()">
+        <option value="none">Sort By</option>
+        <option value="date">📅 Due Date</option>
+        <option value="priority">🔥 Priority</option>
+      </select>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <button class="collapse-btn" onclick="toggleTaskList()">🔽 Show/Hide Tasks</button>
+
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    const taskList = document.getElementById("taskList");
+    const progressFill = document.getElementById("progressFill");
+
+    function updateProgress() {
+      const total = taskList.querySelectorAll(".task").length;
+      const completed = taskList.querySelectorAll(".task.completed").length;
+      const percentage = total ? (completed / total) * 100 : 0;
+      progressFill.style.width = percentage + "%";
+    }
+
+    function loadTasks() {
+      const saved = localStorage.getItem("todoTasks");
+      if (saved) {
+        taskList.innerHTML = saved;
+        restoreEventListeners();
+      }
+      updateProgress();
+    }
+
+    function saveTasks() {
+      localStorage.setItem("todoTasks", taskList.innerHTML);
+      updateProgress();
+    }
+
+    function restoreEventListeners() {
+      taskList.querySelectorAll(".complete").forEach(btn =>
+        btn.onclick = () => {
+          btn.closest("li").classList.toggle("completed");
+          saveTasks();
+        });
+
+      taskList.querySelectorAll(".edit").forEach(btn =>
+        btn.onclick = () => {
+          const taskTitle = btn.closest("li").querySelector(".task-title");
+          const newText = prompt("Edit your task", taskTitle.textContent);
+          if (newText) {
+            taskTitle.textContent = newText;
+            saveTasks();
+          }
+        });
+
+      taskList.querySelectorAll(".delete").forEach(btn =>
+        btn.onclick = () => {
+          btn.closest("li").remove();
+          saveTasks();
+        });
+    }
+
+    function addTask() {
+      const taskText = document.getElementById("taskInput").value.trim();
+      const taskDateTime = document.getElementById("taskDateTime").value;
+      const priority = document.getElementById("prioritySelect").value;
+
+      if (!taskText) {
+        alert("Please enter a task!");
+        return;
+      }
+
+      const li = document.createElement("li");
+      li.className = "task";
+
+      const taskTitle = document.createElement("div");
+      taskTitle.className = "task-title";
+      const icon = priority === "high" ? "🔥" : "🟢";
+      taskTitle.textContent = `${icon} ${taskText}`;
+
+      const taskTime = document.createElement("div");
+      taskTime.className = "task-time";
+      taskTime.textContent = taskDateTime ? `⏰ ${new Date(taskDateTime).toLocaleString()}` : "";
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const completeBtn = document.createElement("button");
+      completeBtn.className = "complete";
+      completeBtn.textContent = "✔️";
+      completeBtn.onclick = () => {
+        li.classList.toggle("completed");
+        saveTasks();
+      };
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "edit";
+      editBtn.textContent = "✏️";
+      editBtn.onclick = () => {
+        const newText = prompt("Edit your task", taskTitle.textContent);
+        if (newText) {
+          taskTitle.textContent = `${icon} ${newText}`;
+          saveTasks();
+        }
+      };
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.onclick = () => {
+        li.remove();
+        saveTasks();
+      };
+
+      actions.append(completeBtn, editBtn, deleteBtn);
+      li.append(taskTitle, taskTime, actions);
+      taskList.appendChild(li);
+
+      document.getElementById("taskInput").value = "";
+      document.getElementById("taskDateTime").value = "";
+      document.getElementById("prioritySelect").value = "normal";
+
+      saveTasks();
+    }
+
+    function toggleMode() {
+      document.body.classList.toggle("light");
+    }
+
+    function filterTasks() {
+      const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+      document.querySelectorAll(".task").forEach(task => {
+        const title = task.querySelector(".task-title").textContent.toLowerCase();
+        task.style.display = title.includes(searchTerm) ? "" : "none";
+      });
+    }
+
+    function sortTasks() {
+      const sortBy = document.getElementById("sortTasks").value;
+      let tasks = Array.from(taskList.children);
+
+      if (sortBy === "date") {
+        tasks.sort((a, b) => {
+          const aTime = new Date(a.querySelector(".task-time").textContent.replace("⏰ ", "")).getTime() || 0;
+          const bTime = new Date(b.querySelector(".task-time").textContent.replace("⏰ ", "")).getTime() || 0;
+          return aTime - bTime;
+        });
+      } else if (sortBy === "priority") {
+        tasks.sort((a, b) => {
+          const aPriority = a.querySelector(".task-title").textContent.includes("🔥") ? 1 : 0;
+          const bPriority = b.querySelector(".task-title").textContent.includes("🔥") ? 1 : 0;
+          return bPriority - aPriority;
+        });
+      }
+
+      taskList.innerHTML = "";
+      tasks.forEach(task => taskList.appendChild(task));
+      saveTasks();
+    }
+
+    function toggleTaskList() {
+      taskList.style.display = taskList.style.display === "none" ? "" : "none";
+    }
+
+    loadTasks();
+  </script>
+</body>
+</html>
